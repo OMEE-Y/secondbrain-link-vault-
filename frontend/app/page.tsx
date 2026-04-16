@@ -1,10 +1,10 @@
-// app/page.tsx
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Trash2, ExternalLink, Plus, LogOut, Link as LinkIcon, Globe } from 'lucide-react';
 
-// Interfaces to match your MongoDB Schema
+// Interfaces
 interface Link {
   _id: string;
   title: string;
@@ -102,26 +102,41 @@ export default function LinkVault() {
     setLinks([]);
   };
 
-  // Auth Screen
+  // Auth Screen with Wheat Background
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
-        <div className="bg-white p-10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.05)] w-full max-w-md border border-slate-100">
+      <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
+        {/* Background Image Container */}
+        <div className="absolute inset-0 z-0">
+          <Image
+            src="/wheat.png" // Ensure your image is named wheat.png in the /public folder
+            alt="Wheat Field Background"
+            fill
+            priority
+            className="object-cover transition-scale duration-1000"
+            quality={100}
+          />
+          {/* Subtle overlay to help text pop */}
+          <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[2px]" />
+        </div>
+
+        {/* Login Card */}
+        <div className="relative z-10 bg-white/80 backdrop-blur-xl p-10 rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.1)] w-full max-w-md border border-white/50 m-4">
           <div className="flex flex-col items-center mb-8">
-            <div className="bg-indigo-600 p-3 rounded-2xl mb-4">
+            <div className="bg-indigo-600/90 p-3 rounded-2xl mb-4 shadow-lg shadow-indigo-200">
               <LinkIcon className="text-white w-8 h-8" />
             </div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight">
               {isLogin ? 'Welcome Back' : 'Get Started'}
             </h1>
-            <p className="text-slate-500 text-sm mt-2">Manage your digital brain</p>
+            <p className="text-slate-600 text-sm mt-2 font-medium italic">Manage your digital brain</p>
           </div>
 
           <form onSubmit={handleAuth} className="space-y-4">
             <input
               type="text"
               placeholder="Username"
-              className="w-full p-4 rounded-xl bg-slate-50 border border-transparent focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-slate-900"
+              className="w-full p-4 rounded-2xl bg-white/50 border border-slate-200/60 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-slate-900 placeholder:text-slate-400"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -129,19 +144,19 @@ export default function LinkVault() {
             <input
               type="password"
               placeholder="Password"
-              className="w-full p-4 rounded-xl bg-slate-50 border border-transparent focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-slate-900"
+              className="w-full p-4 rounded-2xl bg-white/50 border border-slate-200/60 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-slate-900 placeholder:text-slate-400"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-            <button className="w-full bg-indigo-600 text-white p-4 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:-translate-y-0.5 active:translate-y-0 transition-all">
+            <button className="w-full bg-indigo-600 text-white p-4 rounded-2xl font-bold shadow-xl shadow-indigo-200/50 hover:bg-indigo-700 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
               {isLogin ? 'Sign In' : 'Create Account'}
             </button>
           </form>
 
           <button 
             onClick={() => setIsLogin(!isLogin)}
-            className="w-full mt-6 text-sm font-medium text-slate-500 hover:text-indigo-600 transition-colors"
+            className="w-full mt-6 text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors"
           >
             {isLogin ? "New here? Create an account" : "Already have an account? Log in"}
           </button>
@@ -150,7 +165,7 @@ export default function LinkVault() {
     );
   }
 
-  // Dashboard Screen
+  // Dashboard Screen (kept your original clean layout for productivity)
   return (
     <div className="min-h-screen bg-[#fbfcfd] text-slate-900">
       <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4">
@@ -255,13 +270,13 @@ export default function LinkVault() {
                     </div>
                   </div>
                   <button className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                   onClick={async () => {
-    await fetch(`${API_URL}/links/${link._id}`, {
-      method: 'DELETE',
-      headers: { 'x-auth-token': token }
-    });
-    fetchLinks(token);
-  }}>
+                    onClick={async () => {
+                      await fetch(`${API_URL}/links/${link._id}`, {
+                        method: 'DELETE',
+                        headers: { 'x-auth-token': token }
+                      });
+                      fetchLinks(token);
+                    }}>
                     <Trash2 size={18} />
                   </button>
                 </div>

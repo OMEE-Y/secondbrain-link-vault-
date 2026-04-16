@@ -8,7 +8,7 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());
 
-// FIXED CORS (frontend runs on 3000)
+
 app.use(cors({
   origin: [
     'http://localhost:3000',
