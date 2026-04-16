@@ -1,0 +1,14 @@
+# dependencies
+node_modules/
+
+# env files
+.env
+server/.env
+frontend/.env
+
+# next build
+frontend/.next/
+
+# misc
+.DS_Store
+dist/
