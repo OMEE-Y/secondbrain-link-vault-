@@ -9,7 +9,13 @@ const app = express();
 app.use(express.json());
 
 // FIXED CORS (frontend runs on 3000)
-app.use(cors({ origin: 'https://secondbrain-link-vault.vercel.app/' }));
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'https://secondbrain-link-vault.vercel.app'
+  ],
+  credentials: true
+}));
 
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
