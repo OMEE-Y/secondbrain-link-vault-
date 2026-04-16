@@ -20,7 +20,7 @@ export default function LinkVault() {
   const [links, setLinks] = useState<Link[]>([]);
   const [newLink, setNewLink] = useState({ title: '', url: '', tags: '' });
 
-  const API_URL = 'http://localhost:5000';
+  const API_URL = 'https://secondbrain-link-vault.onrender.com/';
 
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
