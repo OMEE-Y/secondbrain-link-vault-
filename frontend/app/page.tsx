@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Trash2, ExternalLink, Plus, LogOut, Link as LinkIcon, Globe } from 'lucide-react';
+import { Trash2, ExternalLink, Plus, LogOut, Link as LinkIcon, Globe, Search, Folder } from 'lucide-react';
+import { Link, GithubLogo, LinkedinLogo, TwitterLogo } from "@phosphor-icons/react";
 
-// Interfaces
 interface Link {
   _id: string;
   title: string;
@@ -19,6 +19,8 @@ export default function LinkVault() {
   const [password, setPassword] = useState<string>('');
   const [links, setLinks] = useState<Link[]>([]);
   const [newLink, setNewLink] = useState({ title: '', url: '', tags: '' });
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   const API_URL = 'https://secondbrain-link-vault.onrender.com';
 
@@ -96,195 +98,275 @@ export default function LinkVault() {
     }
   };
 
+  const deleteLink = async (id: string) => {
+    try {
+      await fetch(`${API_URL}/links/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-auth-token': token }
+      });
+      fetchLinks(token);
+    } catch (err) {
+      console.error("Error deleting link", err);
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setToken('');
     setLinks([]);
   };
 
-  // Auth Screen with Wheat Background
+  // Filter links based on search and selected tag
+  const filteredLinks = links.filter(link => {
+    const matchesSearch = link.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         link.url.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesTag = !selectedTag || link.tags.includes(selectedTag);
+    return matchesSearch && matchesTag;
+  });
+
+  const allTags = Array.from(new Set(links.flatMap(link => link.tags)));
+
+  // Auth Screen
   if (!token) {
     return (
-      <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Background Image Container */}
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="/wheat.png" // Ensure your image is named wheat.png in the /public folder
-            alt="Wheat Field Background"
-            fill
-            priority
-            className="object-cover transition-scale duration-1000"
-            quality={100}
-          />
-          {/* Subtle overlay to help text pop */}
-          <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[2px]" />
+   <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 flex items-center justify-center p-4">
+  {/* Decorative elements */}
+  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <div className="absolute -top-40 -right-40 w-80 h-80 bg-indigo-100/30 rounded-full blur-3xl" />
+    <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-slate-200/20 rounded-full blur-3xl" />
+  </div>
+
+  {/* Top Navigation */}
+  <nav className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-20">
+    <div className="font-bold text-xl text-slate-950 tracking-tight">Link Vault</div>
+    <div className="flex items-center gap-4">
+      <a href="https://github.com/OMEE-Y" target="_blank" rel="noreferrer" className="text-slate-600 hover:text-indigo-600 transition-colors">
+        <GithubLogo size={20} weight="fill" />
+      </a>
+      <a href="https://www.linkedin.com/in/om-yewale-744905328" target="_blank" rel="noreferrer" className="text-slate-600 hover:text-indigo-600 transition-colors">
+        <LinkedinLogo size={20} weight="fill" />
+      </a>
+      <a href="https://x.com/omee_y" target="_blank" rel="noreferrer" className="text-slate-600 hover:text-indigo-600 transition-colors">
+        <TwitterLogo size={20} weight="fill" />
+      </a>
+    </div>
+  </nav>
+
+  {/* Login Card */}
+  <div className="relative z-10 w-full max-w-sm">
+    <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
+      
+      {/* Decorative gradient bar */}
+      <div className="h-2 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600" />
+      
+      <div className="p-8">
+        <div className="flex items-center justify-center mb-8">
+          <div className="bg-indigo-50 p-4 rounded-2xl">
+            <Link className="text-indigo-600 w-7 h-7" weight="bold" />
+          </div>
         </div>
 
-        {/* Login Card */}
-        <div className="relative z-10 bg-white/80 backdrop-blur-xl p-10 rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.1)] w-full max-w-md border border-white/50 m-4">
-          <div className="flex flex-col items-center mb-8">
-            <div className="bg-indigo-600/90 p-3 rounded-2xl mb-4 shadow-lg shadow-indigo-200">
-              <LinkIcon className="text-white w-8 h-8" />
-            </div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">
-              {isLogin ? 'Welcome Back' : 'Get Started'}
-            </h1>
-            <p className="text-slate-600 text-sm mt-2 font-medium italic">Manage your digital brain</p>
-          </div>
+        <h1 className="text-center text-3xl font-bold text-slate-950 mb-2 tracking-tight">
+          {isLogin ? 'Welcome Back' : 'Get Started'}
+        </h1>
+        <p className="text-center text-slate-500 text-sm mb-8 font-medium">
+          {isLogin ? 'Sign in to access your vault' : 'Create an account to start saving'}
+        </p>
 
-          <form onSubmit={handleAuth} className="space-y-4">
+        <form onSubmit={handleAuth} className="space-y-5">
+          <div>
+            <label className="block text-[10px] font-bold text-slate-900 uppercase tracking-widest mb-2 ml-1">
+              Username
+            </label>
             <input
               type="text"
-              placeholder="Username"
-              className="w-full p-4 rounded-2xl bg-white/50 border border-slate-200/60 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-slate-900 placeholder:text-slate-400"
+              placeholder="johndoe"
+              className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 outline-none transition-all"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
             />
+          </div>
+          
+          <div>
+            <label className="block text-[10px] font-bold text-slate-900 uppercase tracking-widest mb-2 ml-1">
+              Password
+            </label>
             <input
               type="password"
-              placeholder="Password"
-              className="w-full p-4 rounded-2xl bg-white/50 border border-slate-200/60 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none text-slate-900 placeholder:text-slate-400"
+              placeholder="••••••••"
+              className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 outline-none transition-all"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-            <button className="w-full bg-indigo-600 text-white p-4 rounded-2xl font-bold shadow-xl shadow-indigo-200/50 hover:bg-indigo-700 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200">
-              {isLogin ? 'Sign In' : 'Create Account'}
-            </button>
-          </form>
+          </div>
 
           <button 
-            onClick={() => setIsLogin(!isLogin)}
-            className="w-full mt-6 text-sm font-semibold text-slate-500 hover:text-indigo-600 transition-colors"
+            type="submit"
+            className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all active:scale-[0.98] mt-6 shadow-lg shadow-slate-900/20"
           >
-            {isLogin ? "New here? Create an account" : "Already have an account? Log in"}
+            {isLogin ? 'Sign In' : 'Create Account'}
+          </button>
+        </form>
+
+        <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+          <button 
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setUsername('');
+              setPassword('');
+            }}
+            className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors"
+          >
+            {isLogin ? "Need an account? Sign up" : "Already have an account? Sign in"}
           </button>
         </div>
       </div>
+    </div>
+  </div>
+</div>
     );
   }
 
-  // Dashboard Screen (kept your original clean layout for productivity)
+  
   return (
-    <div className="min-h-screen bg-[#fbfcfd] text-slate-900">
-      <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-100 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="bg-indigo-600 p-2 rounded-xl">
-              <LinkIcon className="text-white w-5 h-5" />
-            </div>
-            <span className="text-xl font-bold tracking-tight">LinkVault</span>
-          </div>
-          <button 
-            onClick={logout} 
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-slate-600 hover:bg-red-50 hover:text-red-600 transition-all font-medium text-sm"
-          >
-            <LogOut size={18} />
-            Logout
-          </button>
+    <div className="min-h-screen bg-slate-50">
+  {/* Header */}
+  <header className="sticky top-0 z-50 bg-white border-b border-slate-300">
+    <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="bg-indigo-700 p-2 rounded-lg">
+          <LinkIcon className="text-white w-5 h-5" />
         </div>
-      </header>
+        <h1 className="text-xl font-bold text-slate-950 tracking-tight">Link Vault</h1>
+      </div>
+      <button 
+        onClick={logout} 
+        className="flex items-center gap-2 px-4 py-2 rounded-lg text-slate-800 hover:bg-slate-200 transition-colors font-semibold text-sm border border-slate-400 shadow-sm"
+      >
+        <LogOut size={16} />
+        Logout
+      </button>
+    </div>
+  </header>
 
-      <main className="max-w-6xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8 mt-4">
-        {/* Input Section */}
-        <section className="lg:col-span-4">
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 sticky top-24">
-            <h2 className="text-lg font-bold mb-5 flex items-center gap-2">
-              <Plus size={20} className="text-indigo-600" />
-              Quick Add
-            </h2>
-            <form onSubmit={addLink} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Title</label>
-                <input
-                  className="w-full p-3 rounded-xl border border-slate-100 bg-slate-50 focus:bg-white focus:border-indigo-500 outline-none transition-all text-sm"
-                  placeholder="Cool Article"
-                  value={newLink.title}
-                  onChange={(e) => setNewLink({...newLink, title: e.target.value})}
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">URL</label>
-                <input
-                  className="w-full p-3 rounded-xl border border-slate-100 bg-slate-50 focus:bg-white focus:border-indigo-500 outline-none transition-all text-sm"
-                  placeholder="https://example.com"
-                  value={newLink.url}
-                  onChange={(e) => setNewLink({...newLink, url: e.target.value})}
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Tags</label>
-                <input
-                  className="w-full p-3 rounded-xl border border-slate-100 bg-slate-50 focus:bg-white focus:border-indigo-500 outline-none transition-all text-sm"
-                  placeholder="tech, reading, inspiration"
-                  value={newLink.tags}
-                  onChange={(e) => setNewLink({...newLink, tags: e.target.value})}
-                />
-              </div>
-              <button className="w-full bg-slate-900 text-white p-3.5 rounded-xl text-sm font-bold shadow-lg shadow-slate-200 hover:bg-indigo-600 hover:shadow-indigo-100 transition-all flex items-center justify-center gap-2">
-                Save to Vault
-              </button>
-            </form>
+  <main className="max-w-7xl mx-auto px-6 py-8">
+    <div className="mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-6">
+        <div>
+          <h2 className="text-3xl font-bold text-slate-950 mb-1">Your Links</h2>
+          <p className="text-slate-700 font-medium text-sm">{filteredLinks.length} saved {filteredLinks.length === 1 ? 'link' : 'links'}</p>
+        </div>
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search links..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-white border-2 border-slate-400 focus:border-indigo-700 focus:ring-0 outline-none text-sm text-slate-950 placeholder:text-slate-500 font-medium"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
+      
+      {/* Tags */}
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setSelectedTag(null)}
+            className={`px-3 py-1.5 rounded-full text-sm font-bold transition-all border-2 ${
+              selectedTag === null ? 'bg-indigo-700 text-white border-indigo-800' : 'bg-white border-slate-400 text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            All Tags
+          </button>
+          {allTags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
+              className={`px-3 py-1.5 rounded-full text-sm font-bold transition-all border-2 ${
+                selectedTag === tag ? 'bg-indigo-700 text-white border-indigo-800' : 'bg-white border-slate-400 text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Sidebar */}
+      <aside className="lg:col-span-1">
+        <div className="sticky top-24 bg-white p-6 rounded-xl border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+          <h3 className="flex items-center gap-2 text-lg font-bold text-slate-950 mb-6">
+            <Plus className="w-5 h-5 text-indigo-700" />
+            Add Link
+          </h3>
+          <form onSubmit={addLink} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Title</label>
+              <input
+                type="text"
+                placeholder="Link title"
+                className="w-full px-3 py-2.5 rounded-lg bg-white border-2 border-slate-400 focus:border-indigo-700 focus:ring-0 outline-none text-sm text-slate-950 font-medium"
+                value={newLink.title}
+                onChange={(e) => setNewLink({...newLink, title: e.target.value})}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">URL</label>
+              <input
+                type="url"
+                placeholder="https://example.com"
+                className="w-full px-3 py-2.5 rounded-lg bg-white border-2 border-slate-400 focus:border-indigo-700 focus:ring-0 outline-none text-sm text-slate-950 font-medium"
+                value={newLink.url}
+                onChange={(e) => setNewLink({...newLink, url: e.target.value})}
+                required
+              />
+            </div>
+            <button className="w-full bg-indigo-700 text-white py-2.5 rounded-lg font-bold text-sm border-2 border-indigo-900 hover:bg-indigo-800 transition-all active:scale-95">
+              Save Link
+            </button>
+          </form>
+        </div>
+      </aside>
+
+      {/* List */}
+      <section className="lg:col-span-2">
+        {filteredLinks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 bg-white rounded-xl border-2 border-dashed border-slate-400">
+            <p className="text-slate-900 font-bold">No links found</p>
           </div>
-        </section>
-
-        {/* Display Section */}
-        <section className="lg:col-span-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-800">Your Collection</h2>
-            <span className="bg-slate-100 px-3 py-1 rounded-full text-xs font-bold text-slate-500">
-              {links.length} {links.length === 1 ? 'Link' : 'Links'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            {links.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border-2 border-dashed border-slate-100">
-                <Globe className="text-slate-200 w-12 h-12 mb-4" />
-                <p className="text-slate-400 font-medium">Your vault is empty</p>
-              </div>
-            ) : (
-              links.map((link) => (
-                <div key={link._id} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-indigo-100 transition-all group flex items-start justify-between">
-                  <div className="flex-1 min-w-0 pr-4">
-                    <h3 className="font-bold text-slate-900 truncate mb-1 group-hover:text-indigo-600 transition-colors">
-                      {link.title}
-                    </h3>
+        ) : (
+          <div className="space-y-4">
+            {filteredLinks.map((link) => (
+              <div key={link._id} className="group bg-white border-2 border-slate-900 rounded-xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] hover:shadow-none transition-all">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-slate-950 text-base mb-3">{link.title}</h3>
                     <a 
                       href={link.url} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      className="text-sm text-slate-400 flex items-center gap-1.5 hover:text-indigo-500 truncate"
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-indigo-100 text-slate-900 hover:text-indigo-800 border border-slate-300 rounded-md text-xs font-bold transition-colors"
                     >
-                      <ExternalLink size={14} />
-                      {link.url}
+                      <ExternalLink size={12} />
+                      Open Link
                     </a>
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      {link.tags.map(tag => (
-                        <span key={tag} className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[11px] font-bold tracking-wider uppercase">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
                   </div>
-                  <button className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                    onClick={async () => {
-                      await fetch(`${API_URL}/links/${link._id}`, {
-                        method: 'DELETE',
-                        headers: { 'x-auth-token': token }
-                      });
-                      fetchLinks(token);
-                    }}>
+                  <button onClick={() => deleteLink(link._id)} className="p-2 text-slate-900 hover:text-red-700 hover:bg-red-100 rounded-lg transition-all border border-transparent hover:border-red-300">
                     <Trash2 size={18} />
                   </button>
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
-        </section>
-      </main>
+        )}
+      </section>
     </div>
+  </main>
+</div>
   );
 }
