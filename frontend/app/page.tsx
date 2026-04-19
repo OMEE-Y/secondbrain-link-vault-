@@ -140,7 +140,7 @@ export default function LinkVault() {
   <nav className="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-20">
     <div className="font-bold text-xl text-slate-950 tracking-tight">Link Vault</div>
     <div className="flex items-center gap-4">
-      <a href="https://github.com/OMEE-Y" target="_blank" rel="noreferrer" className="text-slate-600 hover:text-indigo-600 transition-colors">
+      <a href="https://github.com/OMEE-Y/secondbrain-link-vault-" target="_blank" rel="noreferrer" className="text-slate-600 hover:text-indigo-600 transition-colors">
         <GithubLogo size={20} weight="fill" />
       </a>
       <a href="https://www.linkedin.com/in/om-yewale-744905328" target="_blank" rel="noreferrer" className="text-slate-600 hover:text-indigo-600 transition-colors">
