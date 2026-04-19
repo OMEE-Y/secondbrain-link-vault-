@@ -180,7 +180,7 @@ export default function LinkVault() {
             </label>
             <input
               type="text"
-              placeholder="johndoe"
+              placeholder="omyewale"
               className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 outline-none transition-all"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
