@@ -5,21 +5,11 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const mongoSanitize = require('express-mongo-sanitize');
-const hpp = require('hpp');
-const compression = require('compression');
-const { body, validationResult } = require('express-validator');
 
 const app = express();
 
-// Middleware
-app.use(helmet());
-app.use(compression()); 
+// ===== Middleware =====
 app.use(express.json());
-app.use(mongoSanitize());
-app.use(hpp());
 
 app.use(cors({
   origin: [
@@ -29,51 +19,30 @@ app.use(cors({
   credentials: true
 }));
 
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100
-});
-app.use(limiter);
+// ===== DB Connection =====
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log('MongoDB Connected'))
+  .catch(err => {
+    console.error('MongoDB Error:', err.message);
+    process.exit(1);
+  });
 
-// Async Wrapper to avoid try-catch spam
-const asyncHandler = (fn) => (req, res, next) => 
-  Promise.resolve(fn(req, res, next)).catch(next);
-
-// DB Connection
-mongoose.connect(process.env.MONGO_URI, {
-  maxPoolSize: 10,
-  serverSelectionTimeoutMS: 5000
-})
-.then(() => console.log("MongoDB Connected"))
-.catch(err => console.error("DB Connection Error:", err));
-
-// Models
+// ===== Models =====
 const User = mongoose.model('User', new mongoose.Schema({
   username: { type: String, unique: true, required: true },
   password: { type: String, required: true }
 }, { timestamps: true }));
 
-
-
-const LinkSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, index: true },
-  title: String,
-  url: String,
+const Link = mongoose.model('Link', new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  title: { type: String, required: true },
+  url: { type: String, required: true },
   tags: [String]
-}, { timestamps: true });
-const Link = mongoose.model('Link', LinkSchema);
+}, { timestamps: true }));
 
-// Auth Middleware
-const auth = (req, res, next) => {
-  const token = req.headers['x-auth-token'];
-  if (!token) return res.status(401).json({ message: 'Unauthorized' });
-
-  try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
-    next();
-  } catch {
-    return res.status(401).json({ message: 'Invalid token' });
-  }
+// ===== Utils =====
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 };
 
 const isValidHttpsUrl = (url) => {
@@ -85,70 +54,146 @@ const isValidHttpsUrl = (url) => {
   }
 };
 
-// Routes
-app.post('/register', 
-  body('username').isLength({ min: 3 }),
-  body('password').isLength({ min: 6 }),
-  asyncHandler(async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+// ===== Auth Middleware =====
+const auth = (req, res, next) => {
+  const token = req.header('x-auth-token');
 
-    const hashedPassword = await bcrypt.hash(req.body.password, 10);
-    const user = await User.create({
-      username: req.body.username,
-      password: hashedPassword
-    });
-
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
-    res.json({ token });
-}));
-
-app.post('/login', asyncHandler(async (req, res) => {
-  const user = await User.findOne({ username: req.body.username });
-  if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
-    return res.status(400).json({ message: 'Invalid credentials' });
+  if (!token) {
+    return res.status(401).json({ message: 'No token, unauthorized' });
   }
 
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
-  res.json({ token });
-}));
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    res.status(401).json({ message: 'Invalid token' });
+  }
+};
 
-app.get('/links', auth, asyncHandler(async (req, res) => {
-  // Using lean() and projection for faster reads
-  const links = await Link.find({ userId: req.user.id }, 'title url tags')
-    .lean();
-  res.json(links);
-}));
+// ===== Routes =====
 
-app.post('/links', auth,
-  body('title').notEmpty(),
-  body('url').notEmpty(),
-  asyncHandler(async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-    if (!isValidHttpsUrl(req.body.url)) return res.status(400).json({ message: 'Only HTTPS URLs allowed' });
+// Register
+app.post('/register', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || username.length < 3) {
+      return res.status(400).json({ message: 'Username too short' });
+    }
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: 'Password too short' });
+    }
+
+    const existing = await User.findOne({ username });
+    if (existing) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+
+    const user = await User.create({
+      username,
+      password: hashed
+    });
+
+    const token = generateToken(user._id);
+
+    res.json({ token });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Login
+app.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    const match = await bcrypt.compare(password, user.password);
+
+    if (!match) {
+      return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    const token = generateToken(user._id);
+
+    res.json({ token });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get Links
+app.get('/links', auth, async (req, res) => {
+  try {
+    const links = await Link.find({ userId: req.user.id }).lean();
+    res.json(links);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Add Link
+app.post('/links', auth, async (req, res) => {
+  try {
+    const { title, url, tags } = req.body;
+
+    if (!title || !url) {
+      return res.status(400).json({ message: 'Missing fields' });
+    }
+
+    if (!isValidHttpsUrl(url)) {
+      return res.status(400).json({ message: 'Only HTTPS URLs allowed' });
+    }
 
     const link = await Link.create({
       userId: req.user.id,
-      title: req.body.title,
-      url: req.body.url,
-      tags: req.body.tags || []
+      title,
+      url,
+      tags: tags || []
     });
+
     res.json(link);
-}));
 
-app.delete('/links/:id', auth, asyncHandler(async (req, res) => {
-  const result = await Link.deleteOne({ _id: req.params.id, userId: req.user.id });
-  if (result.deletedCount === 0) return res.status(404).json({ message: 'Link not found' });
-  res.json({ message: 'Deleted' });
-}));
-
-app.get('/health', (req, res) => res.send('OK'));
-
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Something went wrong' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
+// Delete Link
+app.delete('/links/:id', auth, async (req, res) => {
+  try {
+    const result = await Link.deleteOne({
+      _id: req.params.id,
+      userId: req.user.id
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: 'Link not found' });
+    }
+
+    res.json({ message: 'Deleted' });
+
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Health
+app.get('/health', (req, res) => res.send('OK'));
+
+// ===== Server =====
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on ${PORT}`));
