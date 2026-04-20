@@ -143,7 +143,7 @@ app.delete('/links/:id', auth, asyncHandler(async (req, res) => {
   res.json({ message: 'Deleted' });
 }));
 
-app.get('/health', (req, res) => res.send('OK'));
+app.get('/health', (req, res) => res.status(200).send('OK'));
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
