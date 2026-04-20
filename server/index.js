@@ -18,7 +18,13 @@ const app = express();
 app.use(helmet());
 app.use(compression()); 
 app.use(express.json());
-app.use(mongoSanitize());
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object') {
+    mongoSanitize()(req, res, next);
+  } else {
+    next();
+  }
+});
 app.use(hpp());
 
 app.use(cors({
@@ -132,7 +138,7 @@ app.post('/links', auth,
       userId: req.user.id,
       title: req.body.title,
       url: req.body.url,
-      tags: req.body.tags || []
+     tags: Array.isArray(req.body.tags) ? req.body.tags : []
     });
     res.json(link);
 }));
