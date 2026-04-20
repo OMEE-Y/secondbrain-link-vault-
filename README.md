@@ -80,7 +80,7 @@ Create a `.env` file in the backend folder:
 ```
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_secret_key
-PORT=frontend url of mine/yours
+PORT=5000
 ```
 
 Run the backend:
