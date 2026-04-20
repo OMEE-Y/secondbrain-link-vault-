@@ -18,13 +18,7 @@ const app = express();
 app.use(helmet());
 app.use(compression()); 
 app.use(express.json());
-app.use((req, res, next) => {
-  if (req.body && typeof req.body === 'object') {
-    mongoSanitize()(req, res, next);
-  } else {
-    next();
-  }
-});
+app.use(mongoSanitize());
 app.use(hpp());
 
 app.use(cors({
@@ -138,7 +132,7 @@ app.post('/links', auth,
       userId: req.user.id,
       title: req.body.title,
       url: req.body.url,
-     tags: Array.isArray(req.body.tags) ? req.body.tags : []
+      tags: req.body.tags || []
     });
     res.json(link);
 }));
@@ -149,7 +143,7 @@ app.delete('/links/:id', auth, asyncHandler(async (req, res) => {
   res.json({ message: 'Deleted' });
 }));
 
-app.get('/health', (req, res) => res.status(200).send('OK'));
+app.get('/health', (req, res) => res.send('OK'));
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
