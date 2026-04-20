@@ -1,5 +1,15 @@
-
-<img width="1902" height="895" alt="linkvault" src="https://github.com/user-attachments/assets/e9b29b36-42ae-4480-bdeb-781a8ced9def" />
+<table align="center">
+  <tr>
+    <td align="center">
+      <img src="https://github.com/user-attachments/assets/e9b29b36-42ae-4480-bdeb-781a8ced9def" width="100%" alt="Home Page"/><br/>
+      <b>Home Page</b>
+    </td>
+    <td align="center">
+      <img src="https://github.com/user-attachments/assets/b3d1a46e-d0ef-4130-9198-9e4ad82e6558" width="100%" alt="Dashboard"/><br/>
+      <b>Dashboard</b>
+    </td>
+  </tr>
+</table>
 
 # Link Vault
 
@@ -70,7 +80,7 @@ Create a `.env` file in the backend folder:
 ```
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_secret_key
-PORT=frontend url of mine/yours
+PORT=5000
 ```
 
 Run the backend:
@@ -116,16 +126,7 @@ npm run dev
 
 ---
 
-## Security Features
 
-* Password hashing using bcrypt
-* JWT-based authentication
-* Rate limiting to prevent abuse
-* MongoDB query sanitization
-* HTTP header protection using Helmet
-* Protection against parameter pollution
-
----
 
 ## Live Demo
 
@@ -135,7 +136,6 @@ npm run dev
 
 ## Future Improvements
 
-* Update/edit links
 * Folder or collection system
 * Link previews using metadata
 * Dark mode support
