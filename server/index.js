@@ -10,7 +10,7 @@ const { z } = require('zod');
 
 const app = express();
 
-// ===== Security Middleware =====
+
 app.use(helmet()); 
 app.use(express.json());
 app.use(cors({
@@ -27,7 +27,7 @@ const authLimiter = rateLimit({
   message: { message: 'Too many requests, please try again later.' }
 });
 
-// ===== Validation Schemas =====
+
 const authSchema = z.object({
   username: z.string().min(3).max(30).trim(),
   password: z.string().min(6).max(100)
@@ -52,7 +52,7 @@ mongoose.connect(process.env.MONGO_URI)
     process.exit(1);
   });
 
-// ===== Models =====
+
 const User = mongoose.model('User', new mongoose.Schema({
   username: { type: String, unique: true, required: true, index: true },
   password: { type: String, required: true }
@@ -65,7 +65,7 @@ const Link = mongoose.model('Link', new mongoose.Schema({
   tags: [String]
 }, { timestamps: true }));
 
-// ===== Utils =====
+
 const generateToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
 const auth = (req, res, next) => {
@@ -79,7 +79,7 @@ const auth = (req, res, next) => {
   }
 };
 
-// ===== Routes =====
+
 
 
 app.post('/register', authLimiter, async (req, res) => {
@@ -98,7 +98,7 @@ app.post('/register', authLimiter, async (req, res) => {
   }
 });
 
-// Login
+
 app.post('/login', authLimiter, async (req, res) => {
   const validation = authSchema.safeParse(req.body);
   if (!validation.success) return res.status(400).json({ message: 'Invalid input' });
