@@ -28,8 +28,9 @@ export default function LinkVault() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  const API_URL = 'https://secondbrain-link-vault.onrender.com';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://secondbrain-link-vault.onrender.com';
 
   const showToast = (message: string, type: 'error' | 'success') => {
     const id = Date.now().toString();
@@ -52,9 +53,10 @@ export default function LinkVault() {
   const linkSchema = z.object({
     title: z.string().min(1, "Title is required").max(200).trim(),
     url: z.string().url("Invalid URL"),
-    tags: z.array(z.string()).optional()
+    tags: z.array(z.string().trim()).optional().default([])
   });
 
+  // Initialize token from localStorage on mount
   useEffect(() => {
     const savedToken = localStorage.getItem('token');
     if (savedToken) {
@@ -66,24 +68,35 @@ export default function LinkVault() {
   const fetchLinks = async (tkn: string) => {
     try {
       const res = await fetch(`${API_URL}/links`, {
-        headers: { 'x-auth-token': tkn }
+        headers: { 
+          'x-auth-token': tkn,
+          'Content-Type': 'application/json'
+        }
       });
+      
       if (res.ok) {
         const data = await res.json();
-        setLinks(data);
+        setLinks(data || []);
+      } else if (res.status === 401) {
+        localStorage.removeItem('token');
+        setToken('');
+        showToast("Session expired. Please login again.", "error");
       }
-    } catch {
-      showToast("Failed to load links", "error");
+    } catch (error) {
+      showToast("Failed to load links. Check your connection.", "error");
+      console.error('Fetch links error:', error);
     }
   };
 
-  // ✅ Auth handler
+  // Auth handler (Login/Register)
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
     const result = authSchema.safeParse({ username, password });
     if (!result.success) {
       showToast(result.error.issues[0].message, "error");
+      setIsLoading(false);
       return;
     }
 
@@ -98,25 +111,36 @@ export default function LinkVault() {
 
       const data = await res.json();
 
+      if (!res.ok) {
+        showToast(data.message || "Authentication failed", "error");
+        setIsLoading(false);
+        return;
+      }
+
       if (data.token) {
         localStorage.setItem('token', data.token);
         setToken(data.token);
+        setUsername('');
+        setPassword('');
         fetchLinks(data.token);
-        showToast("Welcome back", "success");
-      } else if (!isLogin) {
-        setIsLogin(true);
-        showToast("Account created successfully", "success");
+        showToast(isLogin ? "Welcome back!" : "Account created! Welcome!", "success");
       } else {
-        showToast("Invalid credentials", "error");
+        showToast("No token received", "error");
       }
-    } catch {
-      showToast("Server connection failed", "error");
+    } catch (error) {
+      showToast("Server connection failed. Please try again.", "error");
+      console.error('Auth error:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Add Link handler
   const addLink = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
+    // Parse tags
     const parsedTags = newLink.tags
       .split(',')
       .map(t => t.trim())
@@ -130,6 +154,7 @@ export default function LinkVault() {
 
     if (!result.success) {
       showToast(result.error.issues[0].message, "error");
+      setIsLoading(false);
       return;
     }
 
@@ -146,15 +171,20 @@ export default function LinkVault() {
       if (res.ok) {
         setNewLink({ title: '', url: '', tags: '' });
         fetchLinks(token);
-        showToast("Link added successfully", "success");
+        showToast("Link added successfully!", "success");
       } else {
-        showToast("Failed to add link", "error");
+        const error = await res.json();
+        showToast(error.message || "Failed to add link", "error");
       }
-    } catch {
+    } catch (error) {
       showToast("Error connecting to server", "error");
+      console.error('Add link error:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  // Delete Link handler
   const deleteLink = async (id: string) => {
     try {
       const res = await fetch(`${API_URL}/links/${id}`, {
@@ -164,34 +194,41 @@ export default function LinkVault() {
 
       if (res.ok) {
         fetchLinks(token);
-        showToast("Link deleted", "success");
+        showToast("Link deleted successfully", "success");
       } else {
-        showToast("Failed to delete link", "error");
+        const error = await res.json();
+        showToast(error.message || "Failed to delete link", "error");
       }
-    } catch {
+    } catch (error) {
       showToast("Error deleting link", "error");
+      console.error('Delete error:', error);
     }
   };
 
+  // Logout handler
   const logout = () => {
     localStorage.removeItem('token');
     setToken('');
     setLinks([]);
-    showToast("Logged out", "success");
+    setUsername('');
+    setPassword('');
+    showToast("Logged out successfully", "success");
   };
 
+  // Filter links based on search and selected tag
   const filteredLinks = links.filter(link => {
     const matchesSearch =
       link.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       link.url.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesTag = !selectedTag || link.tags.includes(selectedTag);
+    const matchesTag = !selectedTag || (link.tags && link.tags.includes(selectedTag));
     return matchesSearch && matchesTag;
   });
 
-  const allTags = Array.from(new Set(links.flatMap(link => link.tags)));
+  // Get all unique tags
+  const allTags = Array.from(new Set(links.flatMap(link => link.tags || [])));
 
-  // ✅ Toast Notification Component
+  // Toast Notification Component
   const ToastContainer = () => (
     <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-[9999] pointer-events-none">
       {toasts.map((toast) => (
@@ -224,6 +261,7 @@ export default function LinkVault() {
     </div>
   );
 
+  // Login/Register Page
   if (!token) {
     return (
       <>
@@ -275,9 +313,10 @@ export default function LinkVault() {
                     <input
                       type="text"
                       placeholder="omyewale"
-                      className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 outline-none transition-all"
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 outline-none transition-all disabled:opacity-50"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
+                      disabled={isLoading}
                       required
                     />
                   </div>
@@ -289,18 +328,20 @@ export default function LinkVault() {
                     <input
                       type="password"
                       placeholder="••••••••"
-                      className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 outline-none transition-all"
+                      className="w-full px-4 py-3 rounded-xl bg-white border border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-600/10 outline-none transition-all disabled:opacity-50"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                      disabled={isLoading}
                       required
                     />
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all active:scale-[0.98] mt-6 shadow-lg shadow-slate-900/20"
+                    disabled={isLoading}
+                    className="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all active:scale-[0.98] mt-6 shadow-lg shadow-slate-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isLogin ? 'Sign In' : 'Create Account'}
+                    {isLoading ? 'Loading...' : (isLogin ? 'Sign In' : 'Create Account')}
                   </button>
                 </form>
 
@@ -311,7 +352,8 @@ export default function LinkVault() {
                       setUsername('');
                       setPassword('');
                     }}
-                    className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors"
+                    disabled={isLoading}
+                    className="text-sm font-semibold text-slate-600 hover:text-indigo-600 transition-colors disabled:opacity-50"
                   >
                     {isLogin ? "Need an account? Sign up" : "Already have an account? Sign in"}
                   </button>
@@ -324,6 +366,7 @@ export default function LinkVault() {
     );
   }
 
+  // Main App Page
   return (
     <>
       <ToastContainer />
@@ -403,9 +446,10 @@ export default function LinkVault() {
                     <input
                       type="text"
                       placeholder="Link title"
-                      className="w-full px-3 py-2.5 rounded-lg bg-white border-2 border-slate-400 focus:border-indigo-700 focus:ring-0 outline-none text-sm text-slate-950 font-medium"
+                      className="w-full px-3 py-2.5 rounded-lg bg-white border-2 border-slate-400 focus:border-indigo-700 focus:ring-0 outline-none text-sm text-slate-950 font-medium disabled:opacity-50"
                       value={newLink.title}
                       onChange={(e) => setNewLink({...newLink, title: e.target.value})}
+                      disabled={isLoading}
                     />
                   </div>
                   <div>
@@ -413,14 +457,30 @@ export default function LinkVault() {
                     <input
                       type="url"
                       placeholder="https://example.com"
-                      className="w-full px-3 py-2.5 rounded-lg bg-white border-2 border-slate-400 focus:border-indigo-700 focus:ring-0 outline-none text-sm text-slate-950 font-medium"
+                      className="w-full px-3 py-2.5 rounded-lg bg-white border-2 border-slate-400 focus:border-indigo-700 focus:ring-0 outline-none text-sm text-slate-950 font-medium disabled:opacity-50"
                       value={newLink.url}
                       onChange={(e) => setNewLink({...newLink, url: e.target.value})}
+                      disabled={isLoading}
                       required
                     />
                   </div>
-                  <button className="w-full bg-indigo-700 text-white py-2.5 rounded-lg font-bold text-sm border-2 border-indigo-900 hover:bg-indigo-800 transition-all active:scale-95">
-                    Save Link
+                  <div>
+                    <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Tags (optional)</label>
+                    <input
+                      type="text"
+                      placeholder="tag1, tag2, tag3"
+                      className="w-full px-3 py-2.5 rounded-lg bg-white border-2 border-slate-400 focus:border-indigo-700 focus:ring-0 outline-none text-sm text-slate-950 font-medium disabled:opacity-50"
+                      value={newLink.tags}
+                      onChange={(e) => setNewLink({...newLink, tags: e.target.value})}
+                      disabled={isLoading}
+                    />
+                  </div>
+                  <button 
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full bg-indigo-700 text-white py-2.5 rounded-lg font-bold text-sm border-2 border-indigo-900 hover:bg-indigo-800 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? 'Saving...' : 'Save Link'}
                   </button>
                 </form>
               </div>
@@ -438,6 +498,15 @@ export default function LinkVault() {
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <h3 className="font-bold text-slate-950 text-base mb-3">{link.title}</h3>
+                          {link.tags && link.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-3">
+                              {link.tags.map((tag) => (
+                                <span key={tag} className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs rounded font-semibold">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                           <a
                             href={link.url}
                             target="_blank"
