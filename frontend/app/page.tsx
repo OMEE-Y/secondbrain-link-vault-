@@ -9,7 +9,7 @@ interface LinkType {
   _id: string;
   title: string;
   url: string;
-  tags: string[];
+  
 }
 
 interface Toast {
@@ -24,7 +24,7 @@ export default function LinkVault() {
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [links, setLinks] = useState<LinkType[]>([]);
-  const [newLink, setNewLink] = useState({ title: '', url: '', tags: '' });
+  const [newLink, setNewLink] = useState({ title: '', url: '' });
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -53,7 +53,7 @@ export default function LinkVault() {
   const linkSchema = z.object({
     title: z.string().min(1, "Title is required").max(200).trim(),
     url: z.string().url("Invalid URL"),
-    tags: z.array(z.string().trim()).optional().default([])
+    
   });
 
   // Initialize token from localStorage on mount
@@ -140,16 +140,12 @@ export default function LinkVault() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Parse tags
-    const parsedTags = newLink.tags
-      .split(',')
-      .map(t => t.trim())
-      .filter(t => t !== '');
+   
 
     const result = linkSchema.safeParse({
       title: newLink.title,
       url: newLink.url,
-      tags: parsedTags
+      
     });
 
     if (!result.success) {
@@ -169,7 +165,7 @@ export default function LinkVault() {
       });
 
       if (res.ok) {
-        setNewLink({ title: '', url: '', tags: '' });
+        setNewLink({ title: '', url: ''});
         fetchLinks(token);
         showToast("Link added successfully!", "success");
       } else {
@@ -221,12 +217,11 @@ export default function LinkVault() {
       link.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       link.url.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesTag = !selectedTag || (link.tags && link.tags.includes(selectedTag));
-    return matchesSearch && matchesTag;
+    
+    return matchesSearch ;
   });
 
-  // Get all unique tags
-  const allTags = Array.from(new Set(links.flatMap(link => link.tags || [])));
+  
 
   // Toast Notification Component
   const ToastContainer = () => (
@@ -408,29 +403,7 @@ export default function LinkVault() {
               </div>
             </div>
 
-            {allTags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setSelectedTag(null)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-bold transition-all border-2 ${
-                    selectedTag === null ? 'bg-indigo-700 text-white border-indigo-800' : 'bg-white border-slate-400 text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  All Tags
-                </button>
-                {allTags.map(tag => (
-                  <button
-                    key={tag}
-                    onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-bold transition-all border-2 ${
-                      selectedTag === tag ? 'bg-indigo-700 text-white border-indigo-800' : 'bg-white border-slate-400 text-slate-900 hover:bg-slate-100'
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
-            )}
+           
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -464,17 +437,7 @@ export default function LinkVault() {
                       required
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider mb-2">Tags (optional)</label>
-                    <input
-                      type="text"
-                      placeholder="tag1, tag2, tag3"
-                      className="w-full px-3 py-2.5 rounded-lg bg-white border-2 border-slate-400 focus:border-indigo-700 focus:ring-0 outline-none text-sm text-slate-950 font-medium disabled:opacity-50"
-                      value={newLink.tags}
-                      onChange={(e) => setNewLink({...newLink, tags: e.target.value})}
-                      disabled={isLoading}
-                    />
-                  </div>
+                  
                   <button 
                     type="submit"
                     disabled={isLoading}
@@ -498,15 +461,7 @@ export default function LinkVault() {
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <h3 className="font-bold text-slate-950 text-base mb-3">{link.title}</h3>
-                          {link.tags && link.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mb-3">
-                              {link.tags.map((tag) => (
-                                <span key={tag} className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs rounded font-semibold">
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                        
                           <a
                             href={link.url}
                             target="_blank"

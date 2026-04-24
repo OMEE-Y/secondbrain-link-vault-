@@ -35,7 +35,7 @@ const authSchema = z.object({
 const linkSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200).trim(),
   url: z.string().url('Invalid URL'),
-  tags: z.array(z.string().trim()).optional().default([])
+  
 });
 
 
@@ -60,7 +60,7 @@ mongoose.connect(process.env.MONGO_URI, {
     process.exit(1);
   });
 
-// MongoDB Schemas & Models
+
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -109,10 +109,7 @@ const linkSchema_db = new mongoose.Schema({
     required: true,
     trim: true
   },
-  tags: {
-    type: [String],
-    default: []
-  }
+  
 }, { timestamps: true });
 
 const Link = mongoose.model('Link', linkSchema_db);
@@ -178,21 +175,20 @@ app.post('/links', auth, async (req, res) => {
       });
     }
 
-    const { title, url, tags } = validation.data;
+    const { title, url } = validation.data;
 
     // Create link
     const link = await Link.create({
       userId: req.user.id,
       title,
       url,
-      tags: tags || []
+    
     });
 
     res.status(201).json({
       _id: link._id,
       title: link.title,
       url: link.url,
-      tags: link.tags,
       createdAt: link.createdAt
     });
   } catch (err) {
