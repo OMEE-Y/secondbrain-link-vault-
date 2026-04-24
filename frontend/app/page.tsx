@@ -26,11 +26,20 @@ export default function LinkVault() {
   const [links, setLinks] = useState<LinkType[]>([]);
   const [newLink, setNewLink] = useState({ title: '', url: '' });
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+ 
+
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://secondbrain-link-vault.onrender.com';
+  const getPlatformIcon = (url: string): string => {
+    try {
+      const domain = new URL(url).hostname;
+      return `https://www.google.com/s2/favicons?sz=64&domain=${domain}`;
+    } catch {
+      return '/default-link.png';
+    }
+  };
 
   const showToast = (message: string, type: 'error' | 'success') => {
     const id = Date.now().toString();
@@ -211,7 +220,7 @@ export default function LinkVault() {
     showToast("Logged out successfully", "success");
   };
 
-  // Filter links based on search and selected tag
+
   const filteredLinks = links.filter(link => {
     const matchesSearch =
       link.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -363,6 +372,7 @@ export default function LinkVault() {
 
   // Main App Page
   return (
+    
     <>
       <ToastContainer />
       <div className="min-h-screen bg-slate-50">
@@ -455,30 +465,59 @@ export default function LinkVault() {
                   <p className="text-slate-900 font-bold">No links found</p>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {filteredLinks.map((link) => (
-                    <div key={link._id} className="group bg-white border-2 border-slate-900 rounded-xl p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] hover:shadow-none transition-all">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-slate-950 text-base mb-3">{link.title}</h3>
-                        
-                          <a
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-indigo-100 text-slate-900 hover:text-indigo-800 border border-slate-300 rounded-md text-xs font-bold transition-colors"
-                          >
-                            <ExternalLink size={12} />
-                            Open Link
-                          </a>
-                        </div>
-                        <button onClick={() => deleteLink(link._id)} className="p-2 text-slate-900 hover:text-red-700 hover:bg-red-100 rounded-lg transition-all border border-transparent hover:border-red-300">
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+               <div className="space-y-3">
+  {filteredLinks.map((link) => (
+    <div
+      key={link._id}
+      className="group flex items-center gap-4 bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-all hover:border-indigo-200"
+    >
+      
+  <div className="flex-shrink-0 size-12 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-center overflow-hidden">
+  <img
+    src={getPlatformIcon(link.url)}
+    alt="Platform Icon"
+    className="w-full h-full object-cover"
+    onError={(e) => {
+      const target = e.target as HTMLImageElement;
+      target.onerror = null;
+      // Just start with the forward slash
+      target.src = '/default-link.png'; 
+    }}
+  />
+</div>
+
+      {/* Content Area */}
+      <div className="flex-1 min-w-0">
+        <h3 className="font-semibold text-slate-900 text-sm truncate">
+          {link.title}
+        </h3>
+        <p className="text-xs text-slate-500 truncate mt-0.5">
+          {new URL(link.url).hostname.replace('www.', '')}
+        </p>
+      </div>
+
+      
+      <div className="flex items-center gap-2">
+        <a
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
+          title="Open Link"
+        >
+          <ExternalLink size={16} />
+        </a>
+        <button
+          onClick={() => deleteLink(link._id)}
+          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-100"
+          title="Delete Link"
+        >
+          <Trash2 size={16} />
+        </button>
+      </div>
+    </div>
+  ))}
+</div>
               )}
             </section>
           </div>
