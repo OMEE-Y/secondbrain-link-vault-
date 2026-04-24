@@ -5,7 +5,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
+
 const { z } = require('zod');
 
 const app = express();
@@ -25,13 +25,6 @@ app.use(cors({
 }));
 
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 requests per window
-  message: 'Too many requests, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 
 const authSchema = z.object({
@@ -157,79 +150,7 @@ const auth = (req, res, next) => {
 // Routes
 
 //REGISTER Route
-app.post('/register', authLimiter, async (req, res) => {
-  try {
-    // Validate input
-    const validation = authSchema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({
-        message: validation.error.issues[0].message || 'Invalid input',
-        errors: validation.error.issues
-      });
-    }
 
-    const { username, password } = validation.data;
-
-    // Check if user already exists
-    const existingUser = await User.findOne({ username: username.toLowerCase() });
-    if (existingUser) {
-      return res.status(400).json({ message: 'Username already exists. Please choose another.' });
-    }
-
-    // Create new user (password will be hashed by pre-save middleware)
-    const user = await User.create({
-      username: username.toLowerCase(),
-      password
-    });
-
-    // Generate token
-    const token = generateToken(user._id);
-
-    res.status(201).json({ token, userId: user._id });
-  } catch (err) {
-    console.error('Register error:', err.message);
-    if (err.code === 11000) {
-      return res.status(400).json({ message: 'Username already exists' });
-    }
-    res.status(500).json({ message: 'Server error during registration' });
-  }
-});
-
-//  LOGIN Route
-app.post('/login', authLimiter, async (req, res) => {
-  try {
-    // Validate input
-    const validation = authSchema.safeParse(req.body);
-    if (!validation.success) {
-      return res.status(400).json({
-        message: validation.error.issues[0].message || 'Invalid input',
-        errors: validation.error.issues
-      });
-    }
-
-    const { username, password } = validation.data;
-
-    // Find user by username
-    const user = await User.findOne({ username: username.toLowerCase() });
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
-
-    // Compare passwords
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
-
-    // Generate token
-    const token = generateToken(user._id);
-
-    res.json({ token, userId: user._id });
-  } catch (err) {
-    console.error('Login error:', err.message);
-    res.status(500).json({ message: 'Server error during login' });
-  }
-});
 
 // GET LINKS Route
 app.get('/links', auth, async (req, res) => {
