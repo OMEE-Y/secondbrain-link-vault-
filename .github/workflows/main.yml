@@ -13,4 +13,4 @@ jobs:
       - name: Ping backend
         run: |
           echo "Pinging backend..."
-          curl -s -o /dev/null -w "%{http_code}" https://secondbrain-link-vault.onrender.com//health
+          curl -s -o /dev/null -w "%{http_code}" https://secondbrain-link-vault.onrender.com/health
